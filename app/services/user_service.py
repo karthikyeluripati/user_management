@@ -50,9 +50,29 @@ class UserService:
         return await cls._fetch_user(session, email=email)
 
     @classmethod
+    async def upload(cls, session: AsyncSession, user_id: UUID, profile_image: Dict[str, str]) -> Optional[User]:
+        try:
+            validated_data = UserUpdate(**profile_image).model_dump(exclude_unset=True)
+            query = update(User).where(User.id == user_id).values(**validated_data).execution_options(synchronize_session="fetch")
+            await cls._execute_query(session, query)
+            updated_user = await cls.get_by_id(session, user_id)
+            if updated_user:
+                await session.refresh(updated_user)  # Explicitly refresh the updated user object
+                logger.info(f"User {user_id} updated successfully.")
+                return updated_user
+            else:
+                logger.error(f"User {user_id} not found after update attempt.")
+            return None
+        except Exception as e:  # Broad exception handling for debugging
+            logger.error(f"Error during user update: {e}")
+            return None
+
+    @classmethod
     async def create(cls, session: AsyncSession, user_data: Dict[str, str], email_service: EmailService) -> Optional[User]:
         try:
             validated_data = UserCreate(**user_data).model_dump()
+            if "profile_picture_url" in validated_data.keys():
+                validated_data.pop("profile_picture_url")
             existing_user_email = await cls.get_by_email(session, validated_data['email'])
             existing_user_nickname = await cls.get_by_nickname(session, validated_data['nickname'])
             if existing_user_email or existing_user_nickname:
@@ -86,7 +106,8 @@ class UserService:
         try:
             # validated_data = UserUpdate(**update_data).dict(exclude_unset=True)
             validated_data = UserUpdate(**update_data).model_dump(exclude_unset=True)
-
+            if "profile_picture_url" in validated_data.keys():
+                validated_data.pop("profile_picture_url")
             if 'password' in validated_data:
                 validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
             query = update(User).where(User.id == user_id).values(**validated_data).execution_options(synchronize_session="fetch")
@@ -94,6 +115,7 @@ class UserService:
             updated_user = await cls.get_by_id(session, user_id)
             if updated_user:
                 session.refresh(updated_user)  # Explicitly refresh the updated user object
+                await session.refresh(updated_user)  # Explicitly refresh the updated user object
                 logger.info(f"User {user_id} updated successfully.")
                 return updated_user
             else:

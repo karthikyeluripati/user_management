@@ -55,7 +55,6 @@ async def get_user(user_id: UUID, request: Request, db: AsyncSession = Depends(g
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     return UserResponse.model_construct(
-        is_professional=user.is_professional,
         id=user.id,
         nickname=user.nickname,
         first_name=user.first_name,
@@ -92,16 +91,7 @@ async def update_user(user_id: UUID, user_update: UserUpdate, request: Request, 
     if not updated_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    existing_user_email = await UserService.get_by_email(db, user_update.email)
-    if existing_user_email and existing_user_email.id != updated_user.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
-
-    existing_user_nickname = await UserService.get_by_nickname(db, user_update.nickname)
-    if existing_user_nickname and existing_user_nickname.id != updated_user.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nickname already exists")
-
     return UserResponse.model_construct(
-        is_professional=updated_user.is_professional,
         id=updated_user.id,
         bio=updated_user.bio,
         first_name=updated_user.first_name,
@@ -150,28 +140,21 @@ async def create_user(user: UserCreate, request: Request, db: AsyncSession = Dep
     Returns:
     - UserResponse: The newly created user's information along with navigation links.
     """
-    existing_user_email = await UserService.get_by_email(db, user.email)
-    if existing_user_email:
+    existing_user = await UserService.get_by_email(db, user.email)
+    if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
     
-    existing_user_nickname = await UserService.get_by_nickname(db, user.nickname)
-    if existing_user_nickname:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nickname already exists")
-
     created_user = await UserService.create(db, user.model_dump(), email_service)
     if not created_user:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create user")
     
     
     return UserResponse.model_construct(
-        is_professional=created_user.is_professional,
         id=created_user.id,
         bio=created_user.bio,
-        profile_picture_url=created_user.profile_picture_url,
-        linkedin_profile_url=created_user.linkedin_profile_url,
-        github_profile_url=created_user.github_profile_url,
         first_name=created_user.first_name,
         last_name=created_user.last_name,
+        profile_picture_url=created_user.profile_picture_url,
         nickname=created_user.nickname,
         email=created_user.email,
         role=created_user.role,
@@ -190,14 +173,6 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))
 ):
-    
-    if skip < 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Skip integer cannot be less than 0")
-
-    if not limit > 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Limit integer cannot be less than 1")
-
-
     total_users = await UserService.count(db)
     users = await UserService.list_users(db, skip, limit)
 
