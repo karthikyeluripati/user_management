@@ -104,48 +104,6 @@ async def test_register_user_with_valid_data(db_session, email_service):
     assert user is not None
     assert user.email == user_data["email"]
 
-# Test registering a user with no nickname
-async def test_register_user_with_no_nickname(db_session, email_service):
-    user_data = {
-        "email": "register_valid_user@example.com",
-        "password": "RegisterValid123!",
-        "role": UserRole.ADMIN
-    }
-    user = await UserService.register_user(db_session, user_data, email_service)
-    assert user is not None
-
-# Test registering a user with duplicate email
-async def test_register_user_with_duplicate_email(db_session, email_service):
-    user_data = {
-        "nickname": generate_nickname(),
-        "email": "register_valid_user@example.com",
-        "password": "RegisterValid123!",
-        "role": UserRole.ADMIN
-    }
-    user = await UserService.register_user(db_session, user_data, email_service)
-    assert user is not None
-    new_user = await UserService.register_user(db_session, user_data, email_service)
-    assert new_user is None
-
-# Test registering a user with duplicate nickname
-async def test_register_user_with_duplicate_nickname(db_session, email_service):
-    user_data_1 = {
-        "nickname": "duplicate_nickname",
-        "email": "register_valid_user@example.com",
-        "password": "RegisterValid123!",
-        "role": UserRole.ADMIN
-    }
-    user_data_2 = {
-        "nickname": "duplicate_nickname",
-        "email": "register_valid_user_2@example.com",
-        "password": "RegisterValid123!",
-        "role": UserRole.ADMIN
-    }
-    user = await UserService.register_user(db_session, user_data_1, email_service)
-    assert user is not None
-    new_user = await UserService.register_user(db_session, user_data_2, email_service)
-    assert new_user is None
-
 # Test attempting to register a user with invalid data
 async def test_register_user_with_invalid_data(db_session, email_service):
     user_data = {
@@ -203,3 +161,38 @@ async def test_unlock_user_account(db_session, locked_user):
     assert unlocked, "The account should be unlocked"
     refreshed_user = await UserService.get_by_id(db_session, locked_user.id)
     assert not refreshed_user.is_locked, "The user should no longer be locked"
+
+# Test updating non-existent user
+async def test_update_non_existent_user(db_session):
+    non_existent_user_id = "non-existent-id"
+    updated_user = await UserService.update(db_session, non_existent_user_id, {"email": "new_email@example.com"})
+    assert updated_user is None
+
+# Test listing users beyond available range
+async def test_list_users_beyond_range(db_session):
+    users = await UserService.list_users(db_session, skip=1000, limit=10)
+    assert len(users) == 0
+
+# Test for account unlock using incorrect ID
+async def test_unlock_user_account_incorrect_id(db_session):
+    incorrect_user_id = "incorrect-id"
+    unlocked = await UserService.unlock_user_account(db_session, incorrect_user_id)
+    assert unlocked is False
+
+async def test_create_user_with_same_email(db_session, email_service):
+    user_data1 = {
+        "nickname": generate_nickname(),
+        "email": "valid_user@example.com",
+        "password": "ValidPassword123!",
+        "role": UserRole.ADMIN.name
+    }
+    user1 = await UserService.create(db_session, user_data1, email_service)
+    assert user1.email == user_data1["email"]
+    user_data2 = {
+        "nickname": generate_nickname(),
+        "email": "valid_user@example.com",
+        "password": "ValidPassword123!",
+        "role": UserRole.ANONYMOUS.name
+    }
+    user2 = await UserService.create(db_session, user_data2, email_service)
+    assert user2 is None
