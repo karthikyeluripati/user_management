@@ -1,6 +1,6 @@
 # IS601-Final Project-User Management 
 
-Reflection document:
+Reflection document: (Reflection on Project Experience.pdf)
 
 # Issues solved
 Debugged and performed 5 QA operations for the following issues
@@ -15,6 +15,8 @@ Debugged and performed 5 QA operations for the following issues
 [link to docker repo](https://hub.docker.com/repository/docker/karthikysvk/user_management/general)
 
 ![image](https://github.com/karthikyeluripati/user_management/assets/64483756/378fe49c-b61b-419b-9195-4005e8f9003f)
+
+![alt text](image.png)
 
 # Mailtrap
 
